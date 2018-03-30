@@ -154,8 +154,8 @@ class MotionPlanning(Drone):
         grid_start = (int(local_pos[0]) - north_offset, int(local_pos[1]) - east_offset)
         # DONE: convert start position to current position rather than map center
 
-        # Set goal as an offset to latitude and longitude
-        global_goal_pos = (global_pos[0] + 0.001, global_pos[1] + 0.001, global_pos[2])
+        # Set goal latitude and longitude
+        global_goal_pos = (-122.395092, 37.792267, global_pos[2])
         print('global_goal_pos: ', global_goal_pos)
         local_goal = global_to_local(global_goal_pos, global_home)[0:2]
         # convert to grid coordinates
