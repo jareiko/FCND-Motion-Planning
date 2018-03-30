@@ -1,9 +1,10 @@
 import argparse
-import time
 import msgpack
-from enum import Enum, auto
-
 import numpy as np
+import re
+import time
+
+from enum import Enum, auto
 
 from planning_utils import a_star, heuristic, create_grid
 from udacidrone import Drone
@@ -119,29 +120,43 @@ class MotionPlanning(Drone):
 
         self.target_position[2] = TARGET_ALTITUDE
 
-        # TODO: read lat0, lon0 from colliders into floating point values
-        
-        # TODO: set home position to (lon0, lat0, 0)
+        # DONE: read lat0, lon0 from colliders into floating point values
+        # DONE: set home position to (lon0, lat0, 0)
+        # DONE: retrieve current global position
+        # DONE: convert to current local position using global_to_local()
 
-        # TODO: retrieve current global position
- 
-        # TODO: convert to current local position using global_to_local()
-        
         print('global home {0}, position {1}, local position {2}'.format(self.global_home, self.global_position,
                                                                          self.local_position))
         # Read in obstacle map
-        data = np.loadtxt('colliders.csv', delimiter=',', dtype='Float64', skiprows=2)
-        
+        with open('colliders.csv') as f:
+            # adapted from https://docs.python.org/3/library/re.html#simulating-scanf
+            scanfloat = "[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?"
+            # Prepare a regex pattern to parse lat0 and lon0
+            pattern = re.compile("lat0 (" + scanfloat + "), lon0 (" + scanfloat + ")\n")
+            # Extract lat0 and lon0 as strings
+            (lat0,lon0) = pattern.fullmatch(f.readline()).groups()
+            # Convert them to floats
+            global_home = (float(lon0), float(lat0), 0)
+            self.set_home_position(*global_home)
+            # Check that column headers are as expected
+            assert(f.readline() == 'posX,posY,posZ,halfSizeX,halfSizeY,halfSizeZ\n')
+            # Read the rest of the file as collider data
+            data = np.loadtxt(f.readlines(), delimiter=',', dtype='Float64')
+
         # Define a grid for a particular altitude and safety margin around obstacles
         grid, north_offset, east_offset = create_grid(data, TARGET_ALTITUDE, SAFETY_DISTANCE)
         print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
-        # Define starting point on the grid (this is just grid center)
-        grid_start = (-north_offset, -east_offset)
-        # TODO: convert start position to current position rather than map center
-        
+
+        global_pos = (self._longitude, self._latitude, self._altitude)
+        print('global_pos: ', global_pos)
+        grid_start = global_to_local(global_pos, global_home)
+        # DONE: convert start position to current position rather than map center
+
         # Set goal as some arbitrary position on the grid
-        grid_goal = (-north_offset + 10, -east_offset + 10)
-        # TODO: adapt to set goal as latitude / longitude position and convert
+        global_goal_pos = (global_pos[0] + 0.001, global_pos[1] + 0.001, global_pos[2])
+        print('global_goal_pos: ', global_goal_pos)
+        grid_goal = global_to_local(global_goal_pos, global_home)
+        # DONE: adapt to set goal as latitude / longitude position and convert
 
         # Run A* to find a path from start to goal
         # TODO: add diagonal motions with a cost of sqrt(2) to your A* implementation
