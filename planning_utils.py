@@ -51,10 +51,16 @@ class Action(Enum):
     is the cost of performing the action.
     """
 
+    diagonal_cost = 1
+
     WEST = (0, -1, 1)
     EAST = (0, 1, 1)
     NORTH = (-1, 0, 1)
     SOUTH = (1, 0, 1)
+    NORTH_EAST = (-1, 1, diagonal_cost)
+    SOUTH_EAST = (1, 1, diagonal_cost)
+    SOUTH_WEST = (1, -1, diagonal_cost)
+    NORTH_WEST = (-1, -1, diagonal_cost)
 
     @property
     def cost(self):
@@ -70,22 +76,39 @@ def valid_actions(grid, current_node):
     Returns a list of valid actions given a grid and current node.
     """
     valid_actions = list(Action)
+    valid_actions = set([
+        Action.WEST,
+        Action.EAST,
+        Action.NORTH,
+        Action.SOUTH,
+        Action.NORTH_EAST,
+        Action.SOUTH_EAST,
+        Action.SOUTH_WEST,
+        Action.NORTH_WEST
+    ])
     n, m = grid.shape[0] - 1, grid.shape[1] - 1
     x, y = current_node
 
-    # check if the node is off the grid or
-    # it's an obstacle
+    # remove actions that would take us off the grid
+    if x - 1 < 0:
+        valid_actions.discard(Action.NORTH)
+        valid_actions.discard(Action.NORTH_EAST)
+        valid_actions.discard(Action.NORTH_WEST)
+    if x + 1 > n:
+        valid_actions.discard(Action.SOUTH)
+        valid_actions.discard(Action.SOUTH_EAST)
+        valid_actions.discard(Action.SOUTH_WEST)
+    if y - 1 < 0:
+        valid_actions.discard(Action.WEST)
+        valid_actions.discard(Action.NORTH_WEST)
+        valid_actions.discard(Action.SOUTH_WEST)
+    if y + 1 > m:
+        valid_actions.discard(Action.EAST)
+        valid_actions.discard(Action.NORTH_EAST)
+        valid_actions.discard(Action.SOUTH_EAST)
 
-    if x - 1 < 0 or grid[x - 1, y] == 1:
-        valid_actions.remove(Action.NORTH)
-    if x + 1 > n or grid[x + 1, y] == 1:
-        valid_actions.remove(Action.SOUTH)
-    if y - 1 < 0 or grid[x, y - 1] == 1:
-        valid_actions.remove(Action.WEST)
-    if y + 1 > m or grid[x, y + 1] == 1:
-        valid_actions.remove(Action.EAST)
-
-    return valid_actions
+    # filter remaining actions according to grid values
+    return [v for v in valid_actions if grid[x + v.delta[0], y + v.delta[1]] == 0]
 
 
 def a_star(grid, h, start, goal):
@@ -98,16 +121,16 @@ def a_star(grid, h, start, goal):
 
     branch = {}
     found = False
-    
+
     while not queue.empty():
         item = queue.get()
         current_node = item[1]
         if current_node == start:
             current_cost = 0.0
-        else:              
+        else:
             current_cost = branch[current_node][0]
-            
-        if current_node == goal:        
+
+        if current_node == goal:
             print('Found a path.')
             found = True
             break
@@ -118,12 +141,12 @@ def a_star(grid, h, start, goal):
                 next_node = (current_node[0] + da[0], current_node[1] + da[1])
                 branch_cost = current_cost + action.cost
                 queue_cost = branch_cost + h(next_node, goal)
-                
-                if next_node not in visited:                
-                    visited.add(next_node)               
+
+                if next_node not in visited:
+                    visited.add(next_node)
                     branch[next_node] = (branch_cost, current_node, action)
                     queue.put((queue_cost, next_node))
-             
+
     if found:
         # retrace steps
         n = goal
@@ -136,7 +159,7 @@ def a_star(grid, h, start, goal):
     else:
         print('**********************')
         print('Failed to find a path!')
-        print('**********************') 
+        print('**********************')
     return path[::-1], path_cost
 
 
@@ -144,3 +167,17 @@ def a_star(grid, h, start, goal):
 def heuristic(position, goal_position):
     return np.linalg.norm(np.array(position) - np.array(goal_position))
 
+def triangle_area(a, b, c):
+    return a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1])
+
+def are_colinear(a, b, c):
+    return abs(triangle_area(a, b, c)) < 0.0001
+
+def prune_colinear(path):
+    pruned = path[0:2]
+    for i in range(2, len(path)):
+        if are_colinear(pruned[-2], pruned[-1], path[i]):
+            pruned[-1] = path[i]
+        else:
+            pruned.append(path[i])
+    return pruned
