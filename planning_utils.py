@@ -51,7 +51,7 @@ class Action(Enum):
     is the cost of performing the action.
     """
 
-    diagonal_cost = 1
+    diagonal_cost = np.sqrt(2)
 
     WEST = (0, -1, 1)
     EAST = (0, 1, 1)
@@ -171,7 +171,9 @@ def triangle_area(a, b, c):
     return a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1])
 
 def are_colinear(a, b, c):
-    return abs(triangle_area(a, b, c)) < 0.0001
+    # Using an epsilon > 1 in order to prune slightly wiggly paths on the grid
+    epsilon = 1.01
+    return abs(triangle_area(a, b, c)) < epsilon
 
 def prune_colinear(path):
     pruned = path[0:2]

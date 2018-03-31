@@ -69,11 +69,14 @@ Same as steps 2 & 3 but for the goal position.
 
 #### 5. Modify A* to include diagonal motion (or replace A* altogether)
 I've just added diagonal motion to the search. No extra creativity I'm afraid!
-I used an estimated cost less than the true cost of sqrt(2) to encourage searching diagonal paths first, to favor easier-to-optimize paths with more straight line segments.
+Using a suggestion from the code review, I increased the epsilon to prune more near-colinear segments.
+This gives smoother results, so I increased the diagonal cost back to its true value of sqrt(2).
+The general A* approach remains the same: a heuristic function (in this case Euclidean distance) allows us to do depth-first search of the grid space from start to goal.
+With an admissible (never overstimating) heuristic function like this one, we can be sure that the first path found will be an optimal one.
 
 #### 6. Cull waypoints
-For this step you can use a collinearity test or ray tracing method like Bresenham. The idea is simply to prune your path of unnecessary waypoints. Explain the code you used to accomplish this step.
-
+I added a triangle-area colinearity test, and iterated through the list of waypoints to detect and remove triplets that form a triangle of small area.
+Each time such a triplet is found, I remove the middle of the three waypoints.
 
 
 ### Execute the flight
